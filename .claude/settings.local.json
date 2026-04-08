@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(gh label:*)",
+      "Bash(gh api:*)",
+      "Bash(bash create-issues.sh)",
+      "Bash(node:*)",
+      "Bash(gh project:*)",
+      "Bash(gh issue:*)",
+      "Bash(for i:*)",
+      "Bash(do echo:*)",
+      "Bash(done)",
+      "Bash(find C:/Users/JBillay/projects/kyc-agent/specifications/ -type f -name *.md)",
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(mkdir -p \"C:/Users/JBillay/projects/kyc-agent/specifications/epic-15-audit-trail-reporting/audit-trail-view\")",
+      "Bash(mkdir -p \"C:/Users/JBillay/projects/kyc-agent/specifications/epic-15-audit-trail-reporting/case-audit-export\")",
+      "Bash(mkdir -p \"C:/Users/JBillay/projects/kyc-agent/specifications/epic-15-audit-trail-reporting/dashboard-analytics\")",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/create-new-feature.ps1 'Docker Compose Stack' -Json -ShortName 'docker-compose-stack'\")",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly\")",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/setup-plan.ps1 -Json\")",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/update-agent-context.ps1 -AgentType claude\")",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json\")",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks\")",
+      "Bash(mkdir:*)"
+    ]
+  }
+}
