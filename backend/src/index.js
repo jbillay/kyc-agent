@@ -2,6 +2,7 @@
 
 const Fastify = require('fastify');
 const Minio = require('minio');
+const { runMigrations } = require('../db/migrate');
 
 const fastify = Fastify({
   logger: {
@@ -53,6 +54,10 @@ fastify.register(require('./api/routes/health'));
 // Start
 // ---------------------------------------------------------------------------
 const start = async () => {
+  if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
+    await runMigrations();
+  }
+
   await initMinIO();
 
   try {

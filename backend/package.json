@@ -5,17 +5,24 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down",
+    "migrate:create": "node-pg-migrate create",
+    "migrate:status": "node-pg-migrate status",
+    "db:seed": "node db/seed.js"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.0",
     "@fastify/websocket": "^8.0.0",
+    "bcrypt": "^5.0.0",
     "bullmq": "^5.0.0",
     "fastify": "^4.0.0",
     "ioredis": "^5.0.0",
     "joi": "^17.0.0",
     "jsonwebtoken": "^9.0.0",
     "minio": "^7.0.0",
+    "node-pg-migrate": "^6.0.0",
     "pg": "^8.0.0",
     "pino": "^8.0.0",
     "yaml": "^2.0.0",
@@ -26,5 +33,9 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "node-pg-migrate": {
+    "migrations-dir": "db/migrations",
+    "database-url-var": "DATABASE_URL"
   }
 }
