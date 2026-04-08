@@ -1,0 +1,20 @@
+# LLM Provider Configuration
+# Full configuration implemented in epic-02-llm-abstraction.
+# This file is mounted into agent-worker containers at /app/config/llm.yaml.
+
+default_provider: ollama
+
+providers:
+  ollama:
+    base_url: http://ollama:11434
+    enabled: true
+    models:
+      reasoning: mistral
+      extraction: mistral
+      screening: mistral
+      classification: mistral
+      summarization: mistral
+
+retry:
+  max_attempts: 3
+  backoff_ms: 1000

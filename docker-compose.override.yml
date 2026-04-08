@@ -1,0 +1,43 @@
+# docker-compose.override.yml — Development overlay
+#
+# This file is automatically merged by Docker Compose V2 when present in the
+# same directory as docker-compose.yaml. No extra flags needed:
+#
+#   docker-compose up          ← applies this overlay automatically
+#   docker-compose -f docker-compose.yaml up  ← ignores this file (production mode)
+#
+# What this overlay adds:
+#   - Bind mounts so code changes are reflected without rebuilding images
+#   - nodemon for backend/worker hot-reload on file changes
+#   - Vite dev server for frontend HMR (hot module replacement)
+#
+# You can freely customize this file for your local setup.
+# It is NOT used in production deployments.
+
+services:
+
+  api:
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/config:/app/config
+    command: ["node_modules/.bin/nodemon", "--watch", "src", "src/index.js"]
+    environment:
+      NODE_ENV: development
+
+  agent-worker:
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/config:/app/config
+    command: ["node_modules/.bin/nodemon", "--watch", "src", "src/workers/agent-worker.js"]
+    environment:
+      NODE_ENV: development
+
+  frontend:
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+    # Vite dev server with HMR; --host exposes it on all interfaces inside the container
+    # so Docker's port mapping works correctly
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    environment:
+      NODE_ENV: development
