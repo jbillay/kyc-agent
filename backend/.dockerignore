@@ -1,8 +1,6 @@
-node_modules/
-npm-debug.log*
+node_modules
+npm-debug.log
 .env
-.env.*
-coverage/
-*.log
-.git/
-.gitignore
+.env.local
+tests/
+*.test.js

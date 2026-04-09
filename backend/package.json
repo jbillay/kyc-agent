@@ -1,11 +1,14 @@
 {
   "name": "kyc-agent-backend",
   "version": "0.1.0",
-  "description": "KYC Agent API server and workers",
+  "private": true,
+  "description": "KYC Agent platform — backend API and agent workers",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
     "migrate:create": "node-pg-migrate create",
@@ -13,26 +16,32 @@
     "db:seed": "node db/seed.js"
   },
   "dependencies": {
-    "@fastify/cors": "^9.0.0",
-    "@fastify/websocket": "^8.0.0",
-    "bcrypt": "^5.0.0",
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/multipart": "^9.0.0",
+    "@fastify/websocket": "^11.0.0",
+    "pg": "^8.13.0",
     "bullmq": "^5.0.0",
-    "fastify": "^4.0.0",
-    "ioredis": "^5.0.0",
-    "joi": "^17.0.0",
+    "ioredis": "^5.4.0",
+    "minio": "^8.0.0",
+    "socket.io": "^4.8.0",
     "jsonwebtoken": "^9.0.0",
-    "minio": "^7.0.0",
-    "node-pg-migrate": "^6.0.0",
-    "pg": "^8.0.0",
-    "pino": "^8.0.0",
-    "yaml": "^2.0.0",
-    "zod": "^3.0.0"
+    "bcrypt": "^5.1.0",
+    "joi": "^17.13.0",
+    "js-yaml": "^4.1.0",
+    "dotenv": "^16.4.0",
+    "node-pg-migrate": "^7.0.0",
+    "pino": "^9.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "roots": ["<rootDir>/../tests/backend"],
+    "testEnvironment": "node"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "node-pg-migrate": {
     "migrations-dir": "db/migrations",

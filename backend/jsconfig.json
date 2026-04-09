@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "module": "commonjs",
+    "target": "ES2022",
+    "baseUrl": ".",
+    "paths": {
+      "@db/*": ["db/*"],
+      "@src/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.js", "db/**/*.js"],
+  "exclude": ["node_modules"]
+}
