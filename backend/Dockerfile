@@ -1,12 +1,11 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev
+COPY package.json package-lock.json* ./
+RUN npm ci --production
 
-COPY src/ ./src/
-COPY config/ ./config/
+COPY . .
 
 EXPOSE 4000
 

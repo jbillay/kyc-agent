@@ -2,27 +2,34 @@
 
 /**
  * Health check route.
- * GET /health → 200 { status: 'ok' }
+ * GET /api/v1/admin/system/health → 200 { status, timestamp, uptime }
  *
  * Used by:
- *   - docker-compose healthcheck (wget http://localhost:4000/health)
- *   - Load balancers / orchestrators
- *   - Manual operator diagnostics
+ *   - Docker healthcheck
+ *   - Container orchestrators / load balancers
+ *   - Operator diagnostics
  */
 async function healthRoutes(fastify) {
-  fastify.get('/health', {
+  fastify.get('/api/v1/admin/system/health', {
     schema: {
       response: {
         200: {
           type: 'object',
           properties: {
-            status: { type: 'string' },
+            status:    { type: 'string' },
+            timestamp: { type: 'string' },
+            uptime:    { type: 'number' },
           },
+          required: ['status', 'timestamp', 'uptime'],
         },
       },
     },
   }, async () => {
-    return { status: 'ok' };
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
   });
 }
 
