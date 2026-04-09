@@ -38,7 +38,8 @@
   },
   "jest": {
     "roots": ["<rootDir>/../tests/backend"],
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "modulePaths": ["<rootDir>/node_modules"]
   },
   "engines": {
     "node": ">=22.0.0"
