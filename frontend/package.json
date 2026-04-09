@@ -2,21 +2,29 @@
   "name": "kyc-agent-frontend",
   "version": "0.1.0",
   "description": "KYC Agent Vue.js 3 frontend",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest"
   },
   "dependencies": {
-    "pinia": "^2.0.0",
-    "vue": "^3.4.0",
-    "vue-router": "^4.0.0"
+    "@primevue/themes": "^4.2.0",
+    "axios": "^1.7.0",
+    "pinia": "^2.2.0",
+    "primevue": "^4.2.0",
+    "primeicons": "^7.0.0",
+    "socket.io-client": "^4.8.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
-    "vite": "^5.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^2.0.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   }
 }

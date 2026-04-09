@@ -1,0 +1,11 @@
+# Frontend-specific ignores (root .gitignore covers node_modules/, dist/, .env*, *.log)
+
+# Vite cache
+.vite/
+
+# Test coverage
+coverage/
+
+# Local env overrides
+.env.local
+.env.*.local
