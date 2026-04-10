@@ -1,0 +1,18 @@
+default_provider: ollama
+
+providers:
+  ollama:
+    retry:
+      max_attempts: 3
+      backoff_ms: 1000
+    timeout_ms: 120000
+    max_concurrent: 4
+    availability_timeout_ms: 3000
+
+routing:
+  ollama:
+    reasoning: llama3.1:70b
+    extraction: llama3.1:8b
+    screening: llama3.1:8b
+    classification: llama3.1:8b
+    summarization: llama3.1:8b
