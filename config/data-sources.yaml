@@ -16,3 +16,9 @@ data_sources:
   #   sec_edgar:
   #     base_url: "https://efts.sec.gov/LATEST/"
   #     cache_ttl_hours: 24
+
+  screening:
+    ofac_sdn:
+      cache_ttl_hours: 1
+    uk_hmt:
+      cache_ttl_hours: 1
