@@ -20,6 +20,9 @@ class DefaultAdapter {
    * @returns {string}
    */
   formatStructuredOutputInstruction(schema) {
+    if (!schema || (typeof schema === 'object' && Object.keys(schema).length === 0)) {
+      throw new Error('schema is required');
+    }
     return (
       'Respond with valid JSON that matches the following schema. ' +
       'Do not include any text outside the JSON object.\n\n' +

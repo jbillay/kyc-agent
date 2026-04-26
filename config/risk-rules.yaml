@@ -1,0 +1,53 @@
+risk_rules:
+  version: "1.0"
+
+  country_risk:
+    high_risk:
+      countries: ["AF", "IR", "KP", "SY", "YE", "MM", "LY", "SO", "SS"]
+      score_addition: 30
+    medium_risk:
+      countries: ["RU", "BY", "VE", "NI", "ZW", "CU", "PK"]
+      score_addition: 15
+
+  industry_risk:
+    high_risk:
+      sic_codes: ["64205", "64209"]
+      keywords: ["cryptocurrency", "virtual asset", "money transfer", "gambling"]
+      score_addition: 25
+    medium_risk:
+      sic_codes: ["64191", "64192"]
+      keywords: ["precious metals", "art dealing", "real estate"]
+      score_addition: 10
+
+  ownership_risk:
+    layers_threshold: 3
+    score_per_extra_layer: 5
+    cross_border_addition: 10
+    opaque_jurisdiction_addition: 20
+    nominee_detected_addition: 15
+    no_ubo_identified_addition: 25
+
+  screening_risk:
+    confirmed_sanctions_hit: 100
+    pep_identified: 20
+    adverse_media_per_hit:
+      high_severity: 15
+      medium_severity: 8
+      low_severity: 3
+
+  thresholds:
+    low: { min: 0, max: 25 }
+    medium: { min: 26, max: 50 }
+    high: { min: 51, max: 75 }
+    very_high: { min: 76, max: 100 }
+
+  review_routing:
+    low_risk_high_confidence:
+      min_confidence: 85
+      max_risk_score: 25
+      route: "qa_agent"
+    standard:
+      route: "human_reviewer"
+    high_risk:
+      min_risk_score: 51
+      route: "senior_analyst"

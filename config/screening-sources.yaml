@@ -1,0 +1,26 @@
+screening_sources:
+  ofac_sdn:
+    type: "sanctions"
+    source_url: "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
+    format: "xml"
+    sync_schedule: "0 2 * * *"  # Daily at 2 AM
+
+  uk_hmt:
+    type: "sanctions"
+    source_url: "https://assets.publishing.service.gov.uk/media/ConList.csv"
+    format: "csv"
+    sync_schedule: "0 3 * * *"  # Daily at 3 AM
+
+  # Uncomment to enable additional screening sources:
+  #
+  # un_consolidated:
+  #   type: "sanctions"
+  #   source_url: "https://scsanctions.un.org/resources/xml/en/consolidated.xml"
+  #   format: "xml"
+  #   sync_schedule: "0 4 * * *"
+  #
+  # eu_consolidated:
+  #   type: "sanctions"
+  #   source_url: "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
+  #   format: "xml"
+  #   sync_schedule: "0 5 * * *"

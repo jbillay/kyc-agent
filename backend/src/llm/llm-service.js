@@ -21,7 +21,7 @@ class LLMService {
    * @param {Object} options.eventStore - Event store service for logging
    * @param {Object} options.promptAdapterFactory - Factory to get adapter by model name
    */
-  constructor({ config, eventStore, promptAdapterFactory }) {
+  constructor({ config, eventStore, promptAdapterFactory, logger = null }) {
     /** @type {Map<string, { provider: import('./types').LLMProvider, semaphore: Semaphore }>} */
     this._providers = new Map();
 
@@ -36,6 +36,8 @@ class LLMService {
 
     this._eventStore = eventStore;
     this._promptAdapterFactory = promptAdapterFactory;
+    this._logger = logger;
+    this._redactionConfig = config.logging ?? null;
   }
 
   /**
@@ -67,6 +69,9 @@ class LLMService {
 
     // 2. Adapt prompt for target model
     const adapter = this._promptAdapterFactory.getAdapter(model);
+    if (this._logger) {
+      this._logger.debug({ adapter: adapter.constructor.name, model }, 'prompt adapter selected');
+    }
     let messages = adapter.formatMessages(request.messages);
 
     // 3. Inject structured output instruction if needed
@@ -142,6 +147,7 @@ class LLMService {
 
     // Non-retryable errors fail immediately without attempting fallback
     if (nonRetryable) {
+      await this._logFailedCall(request, context, maxAttempts, provider.name, model, request.taskType, lastError?.message);
       throw Object.assign(
         new Error(`LLM call failed (non-retryable): ${lastError?.message}`),
         { code: 'LLM_CALL_FAILED', cause: lastError }
@@ -153,6 +159,7 @@ class LLMService {
     if (fallbackResponse) return fallbackResponse;
 
     // 9. No fallback available
+    await this._logFailedCall(request, context, maxAttempts, provider.name, model, request.taskType, lastError?.message);
     throw Object.assign(
       new Error(`LLM call failed after ${maxAttempts} attempts: ${lastError?.message}`),
       { code: 'LLM_CALL_FAILED', cause: lastError }
@@ -312,6 +319,9 @@ class LLMService {
 
       try {
         const adapter = this._promptAdapterFactory.getAdapter(model);
+        if (this._logger) {
+          this._logger.debug({ adapter: adapter.constructor.name, model }, 'prompt adapter selected');
+        }
         let messages = adapter.formatMessages(request.messages);
         if (request.structuredOutput) {
           const instruction = adapter.formatStructuredOutputInstruction(
@@ -346,7 +356,8 @@ class LLMService {
         response.latencyMs = Date.now() - startTime;
         await this._logCall(request, response, context, 1, name);
         return response;
-      } catch {
+      } catch (fallbackErr) {
+        await this._logFailedCall(request, context, 1, name, model, request.taskType, fallbackErr?.message);
         continue;
       }
     }
@@ -383,6 +394,71 @@ class LLMService {
   }
 
   /**
+   * Log a failed LLM call to the event store.
+   * Logging failures are silently swallowed — they must not prevent the original error from propagating.
+   *
+   * @param {import('./types').LLMRequest} request
+   * @param {import('./types').LLMCallContext} context
+   * @param {number} attempt
+   * @param {string} provider
+   * @param {string} model
+   * @param {string} taskType
+   * @param {string} [errorMessage]
+   */
+  async _logFailedCall(request, context, attempt, provider, model, taskType, errorMessage) {
+    if (!this._eventStore || !context?.caseId) return;
+
+    try {
+      await this._eventStore.appendEvent(
+        context.caseId,
+        context.agentType ?? 'unknown',
+        context.stepId ?? 'unknown',
+        'llm_call',
+        {
+          status: 'failed',
+          provider,
+          model,
+          taskType,
+          attempt,
+          error: errorMessage,
+          request: this._redactIfNeeded({
+            messages: request.messages,
+            temperature: request.temperature ?? 0.1,
+            maxTokens: request.maxTokens,
+          }),
+        }
+      );
+    } catch (logErr) {
+      console.error('Failed to log LLM call failure:', logErr.message);
+    }
+  }
+
+  /**
+   * Redact sensitive content from log data if configured.
+   * Preserves structure and metadata (usage, latency, model) while
+   * replacing message text or response content with "[REDACTED]".
+   *
+   * @param {Object} data
+   * @returns {Object}
+   */
+  _redactIfNeeded(data) {
+    if (!this._redactionConfig) return data;
+
+    const result = { ...data };
+
+    if (this._redactionConfig.redact_prompts && result.messages) {
+      result.messages = result.messages.map((m) => ({ ...m, content: '[REDACTED]' }));
+    }
+
+    if (this._redactionConfig.redact_responses && result.content !== undefined) {
+      result.content = '[REDACTED]';
+      if (result.structured) result.structured = '[REDACTED]';
+    }
+
+    return result;
+  }
+
+  /**
    * Log an LLM call to the event store.
    * Logging failures are silently swallowed — they must not break the LLM response.
    *
@@ -396,28 +472,34 @@ class LLMService {
     if (!this._eventStore || !context?.caseId) return;
 
     try {
+      const provider = fallbackProvider || response.provider;
+      const payload = {
+        status: 'success',
+        provider,
+        model: response.model,
+        taskType: request.taskType,
+        attempt,
+        request: this._redactIfNeeded({
+          messages: request.messages,
+          temperature: request.temperature ?? 0.1,
+          maxTokens: request.maxTokens,
+        }),
+        response: this._redactIfNeeded({
+          content: response.content,
+          structured: response.structured,
+          usage: response.usage,
+          latencyMs: response.latencyMs,
+        }),
+      };
+      if (fallbackProvider) {
+        payload.originalProvider = this._defaultProviderName;
+      }
       await this._eventStore.appendEvent(
         context.caseId,
         context.agentType ?? 'unknown',
         context.stepId ?? 'unknown',
         'llm_call',
-        {
-          provider: fallbackProvider || response.provider,
-          model: response.model,
-          taskType: request.taskType,
-          attempt,
-          request: {
-            messages: request.messages,
-            temperature: request.temperature ?? 0.1,
-            maxTokens: request.maxTokens,
-          },
-          response: {
-            content: response.content,
-            structured: response.structured,
-            usage: response.usage,
-            latencyMs: response.latencyMs,
-          },
-        }
+        payload
       );
     } catch (logErr) {
       // Logging failure must not break the LLM call

@@ -36,6 +36,12 @@ class MistralAdapter {
       }
     }
 
+    // Flush any accumulated system content that had no following user message.
+    // Mistral requires at least one user turn, so convert orphaned system content.
+    if (pendingSystem) {
+      result.push({ role: 'user', content: pendingSystem });
+    }
+
     return result;
   }
 
@@ -45,6 +51,9 @@ class MistralAdapter {
    * @returns {string}
    */
   formatStructuredOutputInstruction(schema) {
+    if (!schema || (typeof schema === 'object' && Object.keys(schema).length === 0)) {
+      throw new Error('schema is required');
+    }
     return (
       'You must respond with a valid JSON object and nothing else. ' +
       'Do not add any explanation, markdown, or text outside the JSON.\n\n' +

@@ -24,7 +24,12 @@ class LlamaAdapter {
    */
   formatMessages(messages) {
     // Llama 3 via Ollama /api/chat supports system/user/assistant roles natively.
-    // Pass messages through unchanged — Ollama applies the <|...|> template tokens.
+    // Ensure a system message is always present — Llama 3 performs better with an
+    // explicit system role. If none is provided, prepend a neutral default.
+    const hasSystem = messages.some((m) => m.role === 'system');
+    if (!hasSystem) {
+      return [{ role: 'system', content: 'You are a helpful assistant.' }, ...messages];
+    }
     return messages;
   }
 
@@ -34,6 +39,9 @@ class LlamaAdapter {
    * @returns {string}
    */
   formatStructuredOutputInstruction(schema) {
+    if (!schema || (typeof schema === 'object' && Object.keys(schema).length === 0)) {
+      throw new Error('schema is required');
+    }
     return (
       'Your response MUST be a valid JSON object. ' +
       'Output only the JSON object with no additional text, explanation, or formatting.\n\n' +

@@ -29,7 +29,7 @@ class PromptAdapterFactory {
    */
   getAdapter(modelName) {
     const lower = (modelName || '').toLowerCase();
-    if (lower.startsWith('mistral')) return this._mistral;
+    if (lower.startsWith('mistral') || lower.startsWith('mixtral')) return this._mistral;
     if (lower.startsWith('llama')) return this._llama;
     return this._default;
   }

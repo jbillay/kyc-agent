@@ -22,7 +22,32 @@
       "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/update-agent-context.ps1 -AgentType claude\")",
       "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json\")",
       "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks\")",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(pwsh -NonInteractive -Command \".specify/scripts/powershell/create-new-feature.ps1 'PostgreSQL Database Schema and Migration System' -Json -ShortName 'postgres-schema-migrations'\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(npm install:*)",
+      "Bash(npm list:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(npx jest:*)",
+      "Bash(npm test:*)",
+      "Bash(ls frontend/*.json frontend/*.js frontend/nginx.conf frontend/Dockerfile frontend/.dockerignore)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(Get-Date:*)",
+      "Bash(sed:*)",
+      "Bash(ls *.json)",
+      "PowerShell(.specify/scripts/powershell/create-new-feature.ps1 \"@specifications/epic-03-data-integration/015-companies-house/SPEC.md\" -Json -ShortName \"companies-house-provider\" \"Companies House API Integration\")",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly)",
+      "PowerShell(.specify/scripts/powershell/setup-plan.ps1 -Json)",
+      "PowerShell(.specify/scripts/powershell/update-agent-context.ps1 -AgentType claude)",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json)",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(git restore *)"
     ]
   }
 }

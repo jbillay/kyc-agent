@@ -602,6 +602,118 @@ describe('US4 — Full Audit Logging', () => {
 
     expect(eventStore.appendEvent).not.toHaveBeenCalled();
   });
+
+  // T-LOG-01: successful call includes status:'success'
+  test('T-LOG-01: successful call payload includes status:"success"', async () => {
+    const eventStore = makeEventStore();
+    const primary = makeMockProvider('primary');
+    const service = makeService({ providers: [primary], eventStore });
+
+    await service.complete(makeRequest(), makeContext());
+
+    const payload = eventStore.appendEvent.mock.calls[0][4];
+    expect(payload.status).toBe('success');
+  });
+
+  // T-LOG-02: all-retries-exhausted writes status:'failed' with error field
+  test('T-LOG-02: all-retries-exhausted call writes status:"failed" event with error field', async () => {
+    const eventStore = makeEventStore();
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' }); },
+    });
+    const service = makeService({ providers: [primary], eventStore });
+
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+      Promise.resolve().then(fn);
+      return { unref: () => {} };
+    });
+    await expect(service.complete(makeRequest(), makeContext())).rejects.toMatchObject({ code: 'LLM_CALL_FAILED' });
+    spy.mockRestore();
+
+    const failedCalls = eventStore.appendEvent.mock.calls.filter((c) => c[4].status === 'failed');
+    expect(failedCalls.length).toBeGreaterThanOrEqual(1);
+    const payload = failedCalls[failedCalls.length - 1][4];
+    expect(payload.status).toBe('failed');
+    expect(typeof payload.error).toBe('string');
+    expect(payload.provider).toBeDefined();
+  });
+
+  // T-LOG-03: non-retryable error writes status:'failed' with error field
+  test('T-LOG-03: non-retryable 4xx error writes status:"failed" event before throwing', async () => {
+    const eventStore = makeEventStore();
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('bad request'), { statusCode: 400 }); },
+    });
+    const service = makeService({ providers: [primary], eventStore });
+
+    await expect(service.complete(makeRequest(), makeContext())).rejects.toMatchObject({ code: 'LLM_CALL_FAILED' });
+
+    const failedCalls = eventStore.appendEvent.mock.calls.filter((c) => c[4].status === 'failed');
+    expect(failedCalls).toHaveLength(1);
+    expect(failedCalls[0][4].error).toContain('bad request');
+  });
+
+  // T-LOG-04: fallback success logs provider=fallback + originalProvider=default
+  test('T-LOG-04: fallback success — payload has provider=fallback and originalProvider=default', async () => {
+    const eventStore = makeEventStore();
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('fail'), { code: 'ECONNREFUSED' }); },
+    });
+    const secondary = makeMockProvider('secondary');
+    const service = makeService({ providers: [primary, secondary], eventStore });
+
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+      Promise.resolve().then(fn);
+      return { unref: () => {} };
+    });
+    await service.complete(makeRequest(), makeContext());
+    spy.mockRestore();
+
+    const successCalls = eventStore.appendEvent.mock.calls.filter((c) => c[4].status === 'success');
+    expect(successCalls).toHaveLength(1);
+    const payload = successCalls[0][4];
+    expect(payload.provider).toBe('secondary');
+    expect(payload.originalProvider).toBe('primary');
+  });
+
+  // T-LOG-05: no fallback — originalProvider absent from payload
+  test('T-LOG-05: no fallback involved — originalProvider field absent from payload', async () => {
+    const eventStore = makeEventStore();
+    const primary = makeMockProvider('primary');
+    const service = makeService({ providers: [primary], eventStore });
+
+    await service.complete(makeRequest(), makeContext());
+
+    const payload = eventStore.appendEvent.mock.calls[0][4];
+    expect(payload.status).toBe('success');
+    expect(payload).not.toHaveProperty('originalProvider');
+  });
+
+  // T026 / T-LOG-11: primary fails all retries AND fallback also fails → two discrete llm_call events
+  test('T-LOG-11: primary fails + fallback fails — two separate status:"failed" events (one per provider)', async () => {
+    const eventStore = makeEventStore();
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('primary down'), { code: 'ECONNREFUSED' }); },
+    });
+    const secondary = makeMockProvider('secondary', {
+      completeImpl: () => { throw Object.assign(new Error('secondary down'), { code: 'ECONNREFUSED' }); },
+    });
+    const service = makeService({ providers: [primary, secondary], eventStore });
+
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+      Promise.resolve().then(fn);
+      return { unref: () => {} };
+    });
+    await expect(service.complete(makeRequest(), makeContext())).rejects.toMatchObject({ code: 'LLM_CALL_FAILED' });
+    spy.mockRestore();
+
+    const failedEvents = eventStore.appendEvent.mock.calls.filter((c) => c[4].status === 'failed');
+    // Per FR-001: one event per failed provider attempt — primary failure + fallback failure = 2 events
+    expect(failedEvents.length).toBeGreaterThanOrEqual(2);
+    const providers = failedEvents.map((c) => c[4].provider);
+    expect(providers).toContain('primary');
+    expect(providers).toContain('secondary');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -679,5 +791,241 @@ describe('End-to-end smoke test', () => {
     expect(eventStore.appendEvent).toHaveBeenCalledTimes(1);
     expect(eventStore.appendEvent.mock.calls[0][3]).toBe('llm_call');
     expect(eventStore.appendEvent.mock.calls[0][4].response.structured).toEqual({ result: 'extracted' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US4 logging — fail-open for failed-call path (T015, T016)
+// ---------------------------------------------------------------------------
+
+describe('US4 — Fail-open for failed-call logging', () => {
+  // T-LOG-10: _logFailedCall() event store throw does not swallow LLM error
+  test('T-LOG-10: event store throws on failed call — original LLM_CALL_FAILED error still propagates', async () => {
+    const eventStore = { appendEvent: jest.fn().mockRejectedValue(new Error('store down')) };
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }); },
+    });
+    const service = makeService({ providers: [primary], eventStore });
+
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+      Promise.resolve().then(fn);
+      return { unref: () => {} };
+    });
+    await expect(service.complete(makeRequest(), makeContext())).rejects.toMatchObject({ code: 'LLM_CALL_FAILED' });
+    spy.mockRestore();
+  });
+
+  // T016: _logFailedCall() with no caseId silently skips without throwing
+  test('T016: failed call with no caseId — logging silently skipped, LLM error still thrown', async () => {
+    const eventStore = { appendEvent: jest.fn() };
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('bad request'), { statusCode: 400 }); },
+    });
+    const service = makeService({ providers: [primary], eventStore });
+
+    await expect(
+      service.complete(makeRequest(), { agentType: 'test', stepId: 'step-1' }) // no caseId
+    ).rejects.toMatchObject({ code: 'LLM_CALL_FAILED' });
+    expect(eventStore.appendEvent).not.toHaveBeenCalled();
+  });
+
+  // T027 / T-LOG-12: no caseId on successful call — appendEvent never called, response still returned
+  test('T-LOG-12 (FR-005): no caseId in context — logging silently skipped, LLM response still returned', async () => {
+    const eventStore = { appendEvent: jest.fn().mockResolvedValue(undefined) };
+    const primary = makeMockProvider('primary');
+    const service = makeService({ providers: [primary], eventStore });
+
+    const response = await service.complete(makeRequest(), { agentType: 'test', stepId: 'step-1' }); // no caseId
+
+    expect(response.content).toBe('hello');
+    expect(eventStore.appendEvent).not.toHaveBeenCalled();
+  });
+
+  // T028 / T-LOG-13: no event store configured — complete() returns normally without error
+  test('T-LOG-13 (FR-006): no event store configured — logging silently skipped, LLM response still returned', async () => {
+    // makeService without eventStore → eventStore is null inside LLMService
+    const primary = makeMockProvider('primary');
+    const service = makeService({ providers: [primary] }); // no eventStore passed
+
+    const response = await service.complete(makeRequest(), makeContext());
+
+    expect(response.content).toBe('hello');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US3 — Retry attempt tracking (T017, T018)
+// ---------------------------------------------------------------------------
+
+describe('US3 — Retry attempt tracking in logs', () => {
+  // T-LOG-06: attempt:2 logged when call succeeds on second retry
+  test('T-LOG-06: attempt:2 logged when call succeeds on second retry', async () => {
+    const eventStore = { appendEvent: jest.fn().mockResolvedValue(undefined) };
+    let attempts = 0;
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => {
+        attempts++;
+        if (attempts < 2) throw Object.assign(new Error('transient'), { code: 'ECONNRESET' });
+        return makeResponse({ provider: 'primary' });
+      },
+    });
+    const service = makeService({ providers: [primary], eventStore });
+
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+      Promise.resolve().then(fn);
+      return { unref: () => {} };
+    });
+    await service.complete(makeRequest(), makeContext());
+    spy.mockRestore();
+
+    const successCalls = eventStore.appendEvent.mock.calls.filter((c) => c[4].status === 'success');
+    expect(successCalls).toHaveLength(1);
+    expect(successCalls[0][4].attempt).toBe(2);
+  });
+
+  // T018: failed call after maxAttempts exhausted logs attempt equal to maxAttempts
+  test('T018: failed call after all retries — logged attempt equals max_attempts', async () => {
+    const eventStore = { appendEvent: jest.fn().mockResolvedValue(undefined) };
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => { throw Object.assign(new Error('fail'), { code: 'ECONNRESET' }); },
+    });
+    const config = makeConfig({ providerCfg: { primary: { retry: { max_attempts: 3, backoff_ms: 10 } } } });
+    const service = makeService({ config, providers: [primary], eventStore });
+
+    const spy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+      Promise.resolve().then(fn);
+      return { unref: () => {} };
+    });
+    await expect(service.complete(makeRequest(), makeContext())).rejects.toMatchObject({ code: 'LLM_CALL_FAILED' });
+    spy.mockRestore();
+
+    const failedCalls = eventStore.appendEvent.mock.calls.filter((c) => c[4].status === 'failed');
+    // The last failed-call event (before the final throw) should have attempt = maxAttempts (3)
+    const lastFailedPayload = failedCalls[failedCalls.length - 1][4];
+    expect(lastFailedPayload.attempt).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US4 — Sensitive data redaction (T021, T022, T023)
+// ---------------------------------------------------------------------------
+
+describe('US4 — Sensitive data redaction', () => {
+  function makeServiceWithRedaction(redactionConfig) {
+    const config = { ...makeConfig(), logging: redactionConfig };
+    const eventStore = { appendEvent: jest.fn().mockResolvedValue(undefined) };
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => makeResponse({
+        content: 'secret response',
+        structured: { name: 'Secret Corp' },
+        provider: 'primary',
+      }),
+    });
+    const service = makeService({ config, providers: [primary], eventStore });
+    return { service, eventStore };
+  }
+
+  // T-LOG-07: redact_prompts:true — message content is '[REDACTED]', role preserved
+  test('T-LOG-07: redact_prompts:true — logged messages have content "[REDACTED]" but role preserved', async () => {
+    const { service, eventStore } = makeServiceWithRedaction({ redact_prompts: true, redact_responses: false });
+
+    await service.complete(
+      makeRequest({ messages: [{ role: 'system', content: 'You are KYC.' }, { role: 'user', content: 'Check this.' }] }),
+      makeContext()
+    );
+
+    const payload = eventStore.appendEvent.mock.calls[0][4];
+    for (const msg of payload.request.messages) {
+      expect(msg.content).toBe('[REDACTED]');
+      expect(msg.role).toBeDefined();
+    }
+    // Response content should be untouched
+    expect(payload.response.content).toBe('secret response');
+  });
+
+  // T-LOG-08: redact_responses:true — response content '[REDACTED]', usage/latencyMs unchanged
+  test('T-LOG-08: redact_responses:true — response content "[REDACTED]", usage and latencyMs preserved', async () => {
+    const { service, eventStore } = makeServiceWithRedaction({ redact_prompts: false, redact_responses: true });
+
+    await service.complete(makeRequest(), makeContext());
+
+    const payload = eventStore.appendEvent.mock.calls[0][4];
+    expect(payload.response.content).toBe('[REDACTED]');
+    expect(payload.response.usage).toEqual({ promptTokens: 10, completionTokens: 5, totalTokens: 15 });
+    expect(typeof payload.response.latencyMs).toBe('number');
+    // Prompt messages should be untouched
+    expect(payload.request.messages[0].content).not.toBe('[REDACTED]');
+  });
+
+  // T-LOG-09: no redaction config — full content logged verbatim
+  test('T-LOG-09: no logging config — full content logged without redaction', async () => {
+    const config = makeConfig(); // no logging key
+    const eventStore = { appendEvent: jest.fn().mockResolvedValue(undefined) };
+    const primary = makeMockProvider('primary', {
+      completeImpl: () => makeResponse({ content: 'full response', provider: 'primary' }),
+    });
+    const service = makeService({ config, providers: [primary], eventStore });
+
+    await service.complete(
+      makeRequest({ messages: [{ role: 'user', content: 'real question' }] }),
+      makeContext()
+    );
+
+    const payload = eventStore.appendEvent.mock.calls[0][4];
+    expect(payload.request.messages[0].content).toBe('real question');
+    expect(payload.response.content).toBe('full response');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T019 — FR-011: Adapter selection debug logging
+// ---------------------------------------------------------------------------
+
+describe('FR-011 — Adapter selection debug logging', () => {
+  function makeServiceWithLogger(logger) {
+    const factory = new PromptAdapterFactory();
+    const service = new LLMService({
+      config: makeConfig(),
+      eventStore: null,
+      promptAdapterFactory: factory,
+      logger,
+    });
+    const primary = makeMockProvider('primary');
+    service.registerProvider(primary);
+    return service;
+  }
+
+  test('calls logger.debug with adapter name and model name on complete()', async () => {
+    const logger = { debug: jest.fn() };
+    const service = makeServiceWithLogger(logger);
+    await service.complete(makeRequest({ taskType: 'extraction' }), makeContext());
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.objectContaining({ adapter: expect.any(String), model: expect.any(String) }),
+      'prompt adapter selected'
+    );
+  });
+
+  test('logged adapter name is a non-empty string', async () => {
+    const logger = { debug: jest.fn() };
+    const service = makeServiceWithLogger(logger);
+    await service.complete(makeRequest({ taskType: 'extraction' }), makeContext());
+    const [meta] = logger.debug.mock.calls[0];
+    expect(typeof meta.adapter).toBe('string');
+    expect(meta.adapter.length).toBeGreaterThan(0);
+  });
+
+  test('logged model name matches the routed model', async () => {
+    const logger = { debug: jest.fn() };
+    const service = makeServiceWithLogger(logger);
+    await service.complete(makeRequest({ taskType: 'extraction' }), makeContext());
+    const [meta] = logger.debug.mock.calls[0];
+    expect(meta.model).toBe('primary-extraction-model');
+  });
+
+  test('does not throw and does not log when no logger is provided', async () => {
+    const service = makeServiceWithLogger(null);
+    await expect(
+      service.complete(makeRequest({ taskType: 'extraction' }), makeContext())
+    ).resolves.not.toThrow();
   });
 });

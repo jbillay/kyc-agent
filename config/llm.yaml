@@ -1,18 +1,37 @@
-default_provider: ollama
+llm:
+  default_provider: ollama
 
-providers:
-  ollama:
-    retry:
-      max_attempts: 3
-      backoff_ms: 1000
-    timeout_ms: 120000
-    max_concurrent: 4
-    availability_timeout_ms: 3000
+  logging:
+    redact_prompts: false
+    redact_responses: false
 
-routing:
-  ollama:
-    reasoning: llama3.1:70b
-    extraction: llama3.1:8b
-    screening: llama3.1:8b
-    classification: llama3.1:8b
-    summarization: llama3.1:8b
+  providers:
+    ollama:
+      retry:
+        max_attempts: 3
+        backoff_ms: 1000
+      timeout_ms: 120000
+      max_concurrent: 4
+      availability_timeout_ms: 3000
+
+    # Uncomment to enable additional providers:
+    # vllm:
+    #   base_url: "http://gpu-server:8000"
+    #   api_key: ""
+    #   timeout_ms: 60000
+    #
+    # anthropic:
+    #   api_key: "set ANTHROPIC_API_KEY env var"
+    #   timeout_ms: 30000
+    #
+    # openai:
+    #   api_key: "set OPENAI_API_KEY env var"
+    #   timeout_ms: 30000
+
+  routing:
+    ollama:
+      reasoning: llama3.1:70b
+      extraction: llama3.1:8b
+      screening: llama3.1:8b
+      classification: llama3.1:8b
+      summarization: llama3.1:8b

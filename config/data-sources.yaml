@@ -1,0 +1,18 @@
+data_sources:
+  registries:
+    companies_house:
+      api_key: "${COMPANIES_HOUSE_API_KEY}"
+      base_url: "https://api.company-information.service.gov.uk"
+      timeout_ms: 10000
+      max_queue_wait_ms: 30000
+      retry_attempts: 3
+      rate_limit:
+        requests: 600
+        period_seconds: 300
+      cache_ttl_hours: 24
+
+  # Uncomment and configure to enable additional registry integrations:
+  #
+  #   sec_edgar:
+  #     base_url: "https://efts.sec.gov/LATEST/"
+  #     cache_ttl_hours: 24
