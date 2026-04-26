@@ -47,7 +47,8 @@
       "PowerShell(.specify/scripts/powershell/update-agent-context.ps1 -AgentType claude)",
       "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json)",
       "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "PowerShell(.specify/scripts/powershell/create-new-feature.ps1 \"@specifications/epic-03-data-integration/016-data-caching/SPEC.md\" -Json -ShortName \"data-source-caching\" \"Data Source Response Caching and Versioning\")"
     ]
   }
 }
