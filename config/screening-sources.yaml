@@ -4,6 +4,7 @@ screening_sources:
     source_url: "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML"
     format: "xml"
     sync_schedule: "0 2 * * *"  # Daily at 2 AM
+    match_threshold: 70          # Minimum fuzzy match score (0-100); increase to reduce false positives
 
   uk_hmt:
     type: "sanctions"
