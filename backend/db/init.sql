@@ -219,3 +219,34 @@ CREATE TABLE IF NOT EXISTS data_source_cache (
 
 CREATE INDEX IF NOT EXISTS idx_cache_provider_query
   ON data_source_cache (provider, query_hash, fetched_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- Table 10: screening_sync_events  (APPEND-ONLY)
+-- Immutable audit log for every sanctions list sync run outcome.
+-- Separate from decision_events because sync runs are not tied to a KYC case.
+-- UPDATE and DELETE are blocked by rules below.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS screening_sync_events (
+  id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_name        VARCHAR(100) NOT NULL,
+  status           VARCHAR(30)  NOT NULL
+                     CHECK (status IN ('success','failure','stale_detected')),
+  entries_added    INTEGER      NOT NULL DEFAULT 0,
+  entries_removed  INTEGER      NOT NULL DEFAULT 0,
+  entries_modified INTEGER      NOT NULL DEFAULT 0,
+  error_message    TEXT,
+  attempt_number   INTEGER      NOT NULL DEFAULT 1,
+  started_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  completed_at     TIMESTAMPTZ,
+  sequence_number  BIGSERIAL    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_events_list_name
+  ON screening_sync_events (list_name, started_at DESC);
+
+-- Append-only enforcement: silently discard any UPDATE or DELETE attempts.
+CREATE OR REPLACE RULE no_update_sync_events AS
+  ON UPDATE TO screening_sync_events DO INSTEAD NOTHING;
+
+CREATE OR REPLACE RULE no_delete_sync_events AS
+  ON DELETE TO screening_sync_events DO INSTEAD NOTHING;
