@@ -53,4 +53,12 @@
  * @property {string} timestamp - ISO 8601 timestamp of the update check
  */
 
+/**
+ * @typedef {Object} MatchResult
+ * @property {number} score - Composite similarity score 0–100
+ * @property {boolean} isMatch - True when score >= configured threshold (inclusive)
+ * @property {string[]} matchedFields - Literal token pairs [queryTok, candidateTok, ...]
+ *   from the query and candidate names that contributed most to the score
+ */
+
 module.exports = {};

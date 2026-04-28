@@ -55,7 +55,8 @@
       "PowerShell(.specify/scripts/powershell/create-new-feature.ps1 \"specifications/epic-03-data-integration/018-uk-hmt/SPEC.md\" -Json -ShortName \"uk-hmt-ingestion\" \"UK HMT Sanctions List Ingestion and Search\")",
       "Bash(npm audit *)",
       "Bash(npm view *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "PowerShell(.specify/scripts/powershell/create-new-feature.ps1 \"@specifications/epic-03-data-integration/019-fuzzy-matching/SPEC.md\" -Json -ShortName \"fuzzy-matching-engine\" \"Implement fuzzy name matching engine for sanctions screening\")"
     ]
   }
 }

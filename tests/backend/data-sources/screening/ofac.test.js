@@ -77,7 +77,8 @@ function makeFuzzyMatcher({ threshold = 70, scores = {} } = {}) {
     threshold,
     compare: jest.fn((a, b) => {
       const key = `${a}|${b}`;
-      return scores[key] ?? (a.toLowerCase() === b.toLowerCase() ? 100 : 0);
+      const score = scores[key] ?? (a.toLowerCase() === b.toLowerCase() ? 100 : 0);
+      return { score, isMatch: score >= threshold, matchedFields: [] };
     }),
   };
 }

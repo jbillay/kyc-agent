@@ -63,7 +63,8 @@ class UKHMTProvider {
       let bestMatchedName = '';
 
       for (const name of allNames) {
-        const score = this.fuzzyMatcher.compare(query.name, name);
+        const result = this.fuzzyMatcher.compare(query.name, name);
+        const score = result.score;
         if (score > bestScore) {
           bestScore = score;
           bestMatchedName = name;
