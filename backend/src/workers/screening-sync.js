@@ -2,6 +2,7 @@
 
 const { getConfigService } = require('../services/config-service');
 const { OFACProvider } = require('../data-sources/screening/ofac');
+const { UKHMTProvider } = require('../data-sources/screening/uk-hmt');
 const { FuzzyMatcher } = require('../data-sources/screening/fuzzy-matcher');
 
 /**
@@ -22,10 +23,8 @@ async function syncScreeningLists() {
 
   const providers = [
     new OFACProvider(config.screeningSources?.ofac_sdn || {}, fuzzyMatcher),
+    new UKHMTProvider(config.screeningSources?.uk_hmt || {}, fuzzyMatcher),
   ];
-
-  // Add UKHMTProvider once spec #018 is implemented
-  // providers.push(new UKHMTProvider(config.screeningSources?.uk_hmt || {}, fuzzyMatcher));
 
   const results = [];
 
