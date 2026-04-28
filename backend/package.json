@@ -19,7 +19,7 @@
     "@fastify/cors": "^10.0.0",
     "@fastify/multipart": "^9.0.0",
     "@fastify/websocket": "^11.0.0",
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.0.0",
     "dotenv": "^16.4.0",
     "fast-xml-parser": "^5.7.2",
@@ -29,7 +29,7 @@
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.0",
     "minio": "^8.0.0",
-    "node-pg-migrate": "^7.0.0",
+    "node-pg-migrate": "^8.0.4",
     "pg": "^8.13.0",
     "pino": "^9.0.0",
     "socket.io": "^4.8.0"
